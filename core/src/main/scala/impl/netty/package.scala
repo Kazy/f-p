@@ -1,4 +1,5 @@
 package silt
+package impl
 
 import java.util.concurrent.CancellationException
 
@@ -7,15 +8,12 @@ import scala.language.implicitConversions
 import scala.util.Try
 
 import io.netty.channel.{ Channel, ChannelFuture, ChannelFutureListener, ChannelHandlerContext }
-import io.netty.handler.logging.{ LogLevel, LoggingHandler => Logger }
 
-package object impl {
+package object netty {
 
-  // Note: [[SystemMessageDecoder]] MUST NOT be a @Sharable handler!
-  private[impl] def decoder = new SystemMessageDecoder()
-  private[impl] val ENCODER = new SystemMessageEncoder()
-  private[impl] val FORWARDER = new Forwarder( /* XXX processor */ )
-  private[impl] val LOGGER = new Logger(LogLevel.TRACE)
+  // Note: Decoder MUST NOT be a @Sharable handler!
+  def decoder = new Decoder()
+  val encoder = new Encoder()
   // XXX new LengthFieldBasedFrameDecoder ?
   // XXX new ChunkedWriteHandler() ?
 
@@ -23,14 +21,9 @@ package object impl {
 
   import io.netty.channel.{ Channel, EventLoopGroup }
 
-  private[impl] sealed abstract class Status
-  private[impl] case class Connected(channel: Channel, worker: EventLoopGroup) extends Status
-  private[impl] case object Disconnected extends Status
-
-  // Messages
-
-  private[impl] sealed abstract class Message
-  private[impl] case class Incoming(ctx: ChannelHandlerContext, msg: Any) extends Message
+  sealed abstract class Status
+  case class Connected(channel: Channel, worker: EventLoopGroup) extends Status
+  case object Disconnected extends Status
 
   // Utilities
 
@@ -49,4 +42,4 @@ package object impl {
 
 }
 
-// vim: set tw=80 ft=scala:
+// vim: set tw=120 ft=scala:

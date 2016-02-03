@@ -1,5 +1,6 @@
 package silt
 package impl
+package netty
 
 import java.io.ByteArrayOutputStream
 
@@ -21,7 +22,7 @@ import _root_.com.typesafe.scalalogging.{ StrictLogging => Logging }
   * [[io.netty.handler.codec.MessageToByteEncode#write]] 
   */
 @ChannelHandler.Sharable
-private[impl] class SystemMessageEncoder extends MessageToByteEncoder[silt.Message] with Logging {
+private[netty] class Encoder extends MessageToByteEncoder[silt.Message] with Logging {
 
   import logger._
 
@@ -32,7 +33,7 @@ private[impl] class SystemMessageEncoder extends MessageToByteEncoder[silt.Messa
    *
    */
   override def encode(ctx: ChannelHandlerContext, msg: silt.Message, out: ByteBuf): Unit = {
-    trace(s"Encoder received message: $msg")
+    trace(s"Received message: $msg")
     out.writeBytes(pickle(msg))
   }
 
@@ -59,8 +60,8 @@ private[impl] class SystemMessageEncoder extends MessageToByteEncoder[silt.Messa
 
 }
 
-/** Decoder converts a network stream, encoded by [[SystemMessageEncoder]] back
-  * to the F-P system message format.
+/** Decoder converts a network stream, encoded by [[Encoder]] back to the F-P
+ *  system message format.
   *
   * Note: [[io.netty.handler.codec.ByteToMessageDecoder MUST NOT]] be annotated
   * with @Sharable.
@@ -68,7 +69,7 @@ private[impl] class SystemMessageEncoder extends MessageToByteEncoder[silt.Messa
   * Note: Once a message has been decoded, it will be ''automatically'' released
   * by this decoder ([[io.netty.handler.codec.ByteToMessageDecoder Pitfalls]]).
   */
-private[impl] class SystemMessageDecoder extends ByteToMessageDecoder with Logging {
+private[netty] class Decoder extends ByteToMessageDecoder with Logging {
 
   import java.util.{ List => JList }
   import logger._
@@ -82,15 +83,15 @@ private[impl] class SystemMessageDecoder extends ByteToMessageDecoder with Loggi
   override def decode(ctx: ChannelHandlerContext, in: ByteBuf, out: JList[Object]): Unit = 
     try {
       val buf: ByteBuf = in.readBytes(in.readableBytes())
+
       val arr: Array[Byte] = if (buf.hasArray()) buf.array() else {
         val bos = new ByteArrayOutputStream
         while (buf.isReadable()) bos.write(buf.readByte())
         bos.toByteArray()
       }
-
       if (!arr.isEmpty) {
         val msg = BinaryPickle(arr).unpickle[silt.Message]
-        trace(s"Decoder received message: $msg")
+        trace(s"Received message: $msg")
         out add msg
       } else () // nop
 
@@ -99,4 +100,4 @@ private[impl] class SystemMessageDecoder extends ByteToMessageDecoder with Loggi
 
 }
 
-// vim: set tw=80 ft=scala:
+// vim: set tw=120 ft=scala:
