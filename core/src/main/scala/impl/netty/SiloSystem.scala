@@ -11,15 +11,15 @@ import scala.pickling.Defaults._
 import com.typesafe.scalalogging.{ StrictLogging => Logging }
 
 /** A Netty-based implementation of a silo system. */
-class SiloSystem extends AnyRef with impl.SiloSystem with Transfer with Logging {
+class SiloSystem extends AnyRef with impl.SiloSystem with Connection with Correlation with Transfer with Logging {
 
   import logger._
 
-  // Members declared in silt.impl.Transfer
+  // Members declared in silt.impl.netty.Transfer
 
   override val statusOf = new TrieMap[Host, Status]
 
-  override val promiseOf = new TrieMap[Id, Promise[Response]]
+  override val promiseOf = new TrieMap[MsgId, Promise[Response]]
 
   // Members declared in silt.SiloSystem
 
@@ -31,7 +31,7 @@ class SiloSystem extends AnyRef with impl.SiloSystem with Transfer with Logging 
     info(s"Silo system `$name` terminating...")
     val to = statusOf collect { case (host, Connected(channel, worker)) =>
       trace(s"Closing connection to `$host`.")
-      post(channel, Disconnect)
+      tell(channel, Disconnect)
         .andThen { case _ => worker.shutdownGracefully() }
         .andThen { case _ => statusOf += (host -> Disconnected) }
     }
@@ -50,8 +50,8 @@ class SiloSystem extends AnyRef with impl.SiloSystem with Transfer with Logging 
 
   // Members declared in silt.Internals
 
-  override def initiate[R <: silt.RSVP: Pickler](at: Host)(request: Id => R): Future[silt.Response] =
-    connect(at) flatMap { via => send(via, request(msgId.next)) }
+  override def initiate[R <: silt.RSVP: Pickler](at: Host)(request: MsgId => R): Future[silt.Response] =
+    connect(at) flatMap { via => ask(via, request(msgId.next)) }
 
   override def withServer(host: Host): Future[silt.SiloSystem] = {
     val promise = Promise[silt.SiloSystem]

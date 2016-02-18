@@ -14,7 +14,7 @@ trait SiloRefFactory {
     * @return a [[silt.SiloRef]], identifying the uploaded silo, as soon as the
     * initialization process has been completed.
     */
-  def populate[T](fac: SiloFactory[T])(at: Host)(implicit pickler: Pickler[Populate[T]]): Future[SiloRef[T]]
+  def populate[T](at: Host, fac: SiloFactory[T])(implicit pickler: Pickler[Populate[T]]): Future[SiloRef[T]]
 
   /** Upload a silo to `host` with the initialization process defined by `data`.
     *
@@ -26,13 +26,12 @@ trait SiloRefFactory {
     * @return a [[silt.SiloRef]], identifying the uploaded silo, as soon as the
     * initialization process has been completed.
     */
-  final def populate[T](fun: () => Silo[T])(at: Host)(implicit pickler: Pickler[Populate[T]]): Future[SiloRef[T]] =
-    populate(new SiloFactory[T] { override def data = fun().data })(at)
+  final def populate[T](at: Host, fun: () => Silo[T])(implicit pickler: Pickler[Populate[T]]): Future[SiloRef[T]] =
+    populate(at, new SiloFactory[T] { override def data = fun().data })
 
 }
 
-// XXX uid: Id?
-final case class SiloRefId(uid: Int, at: Host)
+final case class SiloRefId(id: RefId, at: Host)
 
 /** Immutable and serializable handle to a silo.
   *
@@ -52,9 +51,9 @@ trait SiloRef[T] {
     case _                 => false
   }
 
-  //def apply[S](fun: Spore[T, S])(implicit pickler: Pickler[Spore[T, S]], unpickler: Unpickler[Spore[T, S]]): SiloRef[S]
+  // XXX def apply[S](fun: Spore[T, S])(implicit pickler: Pickler[Spore[T, S]], unpickler: Unpickler[Spore[T, S]]): SiloRef[S]
 
-  //def flatMap[S](fun: Spore[T, SiloRef[S]])(implicit pickler: Pickler[Spore[T, SiloRef[S]]], unpickler: Unpickler[Spore[T, SiloRef[S]]]): SiloRef[S]
+  // XXX def flatMap[S](fun: Spore[T, SiloRef[S]])(implicit pickler: Pickler[Spore[T, SiloRef[S]]], unpickler: Unpickler[Spore[T, SiloRef[S]]]): SiloRef[S]
 
   def send(): Future[T]
 
@@ -62,4 +61,20 @@ trait SiloRef[T] {
 
 }
 
+abstract class SiloRefAdapter[T]() extends SiloRef[T] {
+
+  def node(): graph.Node
+
+  override def send(): Future[T] =
+    ???
+
+}
+
+class Materialized[T](refId: RefId, at: Host) extends SiloRefAdapter[T] {
+
+  override val id = SiloRefId(refId, at)
+
+  override def node(): graph.Node = new graph.Materialized(id)
+
+}
 // vim: set tw=120 ft=scala:

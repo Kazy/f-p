@@ -66,10 +66,10 @@ trait SiloSystem extends SiloRefFactory with Logging {
 
   // Members declared in silt.SiloRefFactory
 
-  override final def populate[T](fac: SiloFactory[T])(at: Host)(implicit pickler: Pickler[Populate[T]]): Future[SiloRef[T]] =
-    initiate(at) { id => Populate(id, fac) } map {
-      case Populated(id, cor) => ???
-      case _                  => throw new Exception(s"Silo population at `$at` failed.")
+  override final def populate[T](at: Host, fac: SiloFactory[T])(implicit pickler: Pickler[Populate[T]]): Future[SiloRef[T]] =
+    initiate(at) { msgId => Populate(msgId)(fac) } map {
+      case response: Populated => new Materialized[T](response.ref, at)
+      case _                   => throw new Exception(s"Silo population at `$at` failed.")
     }
 
 }
@@ -82,7 +82,7 @@ trait SiloSystem extends SiloRefFactory with Logging {
 private[silt] trait Internals {
 
   // Initiate request `request` at `at`.
-  def initiate[R <: silt.RSVP : Pickler](at: Host)(request: Id => R): Future[silt.Response]
+  def initiate[R <: silt.RSVP : Pickler](at: Host)(request: MsgId => R): Future[silt.Response]
 
   ///* Send a request */
   //// XXX Return `Future[SelfDesribing]`?
@@ -98,7 +98,7 @@ private[silt] trait Internals {
 
     private val ids = new AtomicInteger(10)
 
-    def next = Id(ids.incrementAndGet())
+    def next = MsgId(ids.incrementAndGet())
 
   }
 

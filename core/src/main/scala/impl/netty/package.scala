@@ -7,23 +7,15 @@ import scala.concurrent.{ ExecutionContext, Promise, Future }
 import scala.language.implicitConversions
 import scala.util.Try
 
-import io.netty.channel.{ Channel, ChannelFuture, ChannelFutureListener, ChannelHandlerContext }
+import io.netty.channel.{ Channel, ChannelFuture, ChannelFutureListener, EventLoopGroup }
 
 package object netty {
 
-  // Note: Decoder MUST NOT be a @Sharable handler!
-  def decoder = new Decoder()
-  val encoder = new Encoder()
-  // XXX new LengthFieldBasedFrameDecoder ?
-  // XXX new ChunkedWriteHandler() ?
-
   // Connection status
 
-  import io.netty.channel.{ Channel, EventLoopGroup }
-
-  sealed abstract class Status
-  case class Connected(channel: Channel, worker: EventLoopGroup) extends Status
-  case object Disconnected extends Status
+  private[netty] sealed abstract class Status
+  private[netty] case class Connected(channel: Channel, worker: EventLoopGroup) extends Status
+  private[netty] case object Disconnected extends Status
 
   // Utilities
 

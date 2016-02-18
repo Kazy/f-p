@@ -2,7 +2,7 @@ package silt
 
 sealed trait Identifiable {
 
-  val id: Id
+  val id: MsgId
 
 }
 
@@ -13,9 +13,9 @@ case object Disconnect extends Request
 case object Terminate  extends Request
 
 sealed abstract class RSVP extends Request with Identifiable
-case class  Populate[T](id: Id, fac: SiloFactory[T]) extends RSVP 
+case class  Populate[T](id: MsgId)(fac: SiloFactory[T]) extends RSVP 
 
 sealed abstract class Response extends Message with Identifiable
-case class Populated(id: Id, cor: Id) extends Response
+case class Populated(id: MsgId)(val ref: RefId) extends Response
 
 // vim: set tw=120 ft=scala:

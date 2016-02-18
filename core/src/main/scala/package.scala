@@ -28,10 +28,11 @@ package object silt {
   //  
   //  }
 
-  /** A unique silo sytem message identifier.
-    */
-  final case class Id private[silt] (value: Int)
+  /** A unique silo sytem message identifier. */
+  final case class MsgId private[silt] (value: Int)
 
+  /** A unique silo sytem reference identifier. */
+  final case class RefId private[silt] (value: Int)
 }
 
 // vim: set tw=120 ft=scala:
