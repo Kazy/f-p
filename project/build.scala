@@ -60,4 +60,14 @@ object build extends Build {
     )
   ) dependsOn(`core`)
 
+  lazy val trials = Project(
+    id = "trials",
+    base = file("trials"),
+    settings = standardSettings ++ SbtMultiJvm.multiJvmSettings ++ Seq[Sett](
+      name := "trials",
+      cancelable in Global := true,
+      compile in MultiJvm <<= (compile in MultiJvm) triggeredBy (compile in Test)
+    )
+  ) dependsOn(core) configs (MultiJvm)
+
 }
