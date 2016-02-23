@@ -181,7 +181,7 @@ object Picklers {
       CommandEnvelope(cmd)
     }
   }
-
+   
   implicit object CommandPU extends Pickler[Command] with Unpickler[Command] {
     def tag = implicitly[FastTypeTag[Command]]
     def pickle(picklee: Command, builder: PBuilder): Unit = picklee match {

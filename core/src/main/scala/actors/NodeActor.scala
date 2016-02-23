@@ -11,6 +11,11 @@ import scala.pickling._
 import Defaults._
 import binary._
 
+import scala.spores._
+import SporePickler._
+
+import graph.Picklers._
+
 import scala.concurrent.{Future, Promise}
 import scala.concurrent.duration._
 import scala.concurrent.ExecutionContext.Implicits.global
@@ -140,26 +145,6 @@ class NodeActor(system: SiloSystemInternal) extends Actor {
         s ! replyMsg
       }
 
-/*
-    case msg: ApplyMessage[a, b] =>
-      val refId    = msg.refId
-      val fun      = msg.fun
-      val newRefId = msg.newRefId
-      print(s"SERVER: sending function to Silo '$refId': ")
-
-      // `newRefId` is local
-      val promise = getOrElseInitPromise(newRefId)
-
-      // look up Silo
-      // assume that promise of refId exists
-      promiseOf(refId).future.foreach { (silo: LocalSilo[_]) =>
-        println(silo.toString)
-
-        val newSilo = silo.internalApply[a, b](fun) // COMPUTE-INTENSIVE
-        println(s"SERVER: value of new Silo: ${newSilo.value}")
-        promise.success(newSilo)
-      }
-*/
     case msg @ ForceMessage(idVal) =>
       println(s"SERVER: forcing SiloRef '$idVal'...")
 
@@ -177,7 +162,7 @@ class NodeActor(system: SiloSystemInternal) extends Actor {
       }
 
     case msg @ Graph(n) =>
-      // println(s"node actor: received graph with node $n")
+      println(s"node actor: received graph with node $n")
 
       n match {
         // expect a ForceResponse(value)
@@ -192,6 +177,24 @@ class NodeActor(system: SiloSystemInternal) extends Actor {
             promise.success(newSilo)
             println(s"responding to ${localSender.path.name}")
             localSender ! ForceResponse(res)
+          }
+
+        case fm: FMapped[v, s, u, t] =>
+          val fun = fm.fun
+          val localRefId = fm.refId
+          val localHost = system.location(localRefId)
+          val promise = getOrElseInitPromise(localRefId)
+          val localSender = sender
+          (self ? Graph(fm.input)).map { case ForceResponse(value) =>
+            val resSilo = fun(value.asInstanceOf[s])
+            val actorHost = Config.m(resSilo.host)
+            val emptySiloRef = new EmptySiloRef[u, t](localRefId, localHost)(system)
+
+            resSilo.pumpTo(emptySiloRef)(spore {
+              (elem: u, emitter: Emitter[u]) => emitter.emit(elem)
+            })
+
+            localSender ! ForceResponse(resSilo)
           }
 
         case m: Materialized =>
