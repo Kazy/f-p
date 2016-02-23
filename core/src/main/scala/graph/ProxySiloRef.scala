@@ -6,6 +6,8 @@ import scala.pickling._
 import Defaults._
 import binary._
 
+import SporePickler._
+
 import scala.concurrent.Future
 import scala.concurrent.ExecutionContext.Implicits.global
 
@@ -42,7 +44,7 @@ abstract class ProxySiloRef[W, T <: Traversable[W]](refId: Int, val host: Host)(
     system.send(host, Graph(n)).map(_.asInstanceOf[T])
   }
 
-  override def flatMap[V, S <: Traversable[V]](fun: Spore[T, SiloRef[V, S]])
+  override def flatMap[V : Pickler : FastTypeTag, S <: Traversable[V]](fun: Spore[T, SiloRef[V, S]])
     (implicit pickler: Pickler[Spore[T, SiloRef[V, S]]],
       unpickler: Unpickler[Spore[T, SiloRef[V, S]]]): SiloRef[V, S] = {
     val newRefId = system.refIds.incrementAndGet()
@@ -74,13 +76,14 @@ class ApplySiloRef[V, S <: Traversable[V], U, T <: Traversable[U]]
   }
 }
 
-class FMappedSiloRef[V, S <: Traversable[V], U, T <: Traversable[U]]
+class FMappedSiloRef[V, S <: Traversable[V], U : Pickler : FastTypeTag, T <: Traversable[U]]
                     (val input: ProxySiloRef[V, S], val refId: Int, val f: Spore[S, SiloRef[U, T]],
                      val pickler: Pickler[Spore[S, SiloRef[U, T]]], val unpickler: Unpickler[Spore[S, SiloRef[U, T]]])
   (implicit system: SiloSystemInternal) extends ProxySiloRef[U, T](refId, input.host) { // result on same host as input
   def node(): Node = {
     // recursively create graph node for `input`
     val prevNode = input.node()
+
     new FMapped[V, S, U, T](prevNode, refId, f, pickler, unpickler)
   }
 }

@@ -179,19 +179,19 @@ class NodeActor(system: SiloSystemInternal) extends Actor {
             localSender ! ForceResponse(res)
           }
 
-        case fm: FMapped[v, s, u, t] =>
+        case fm: FMapped[u, t, v, s] =>
           val fun = fm.fun
           val localRefId = fm.refId
           val localHost = system.location(localRefId)
           val promise = getOrElseInitPromise(localRefId)
           val localSender = sender
           (self ? Graph(fm.input)).map { case ForceResponse(value) =>
-            val resSilo = fun(value.asInstanceOf[s])
+            val resSilo = fun(value.asInstanceOf[t])
             val actorHost = Config.m(resSilo.host)
-            val emptySiloRef = new EmptySiloRef[u, t](localRefId, localHost)(system)
+            val emptySiloRef = new EmptySiloRef[v, s](localRefId, localHost)(system)
 
             resSilo.pumpTo(emptySiloRef)(spore {
-              (elem: u, emitter: Emitter[u]) => emitter.emit(elem)
+              (elem: v, emitter: Emitter[v]) => emitter.emit(elem)
             })
 
             localSender ! ForceResponse(resSilo)

@@ -38,7 +38,7 @@ trait SiloRef[W, T <: Traversable[W]] {
   def pumpTo[V, R <: Traversable[V], P <: Spore2[W, Emitter[V], Unit]](destSilo: SiloRef[V, R])(fun: P)
                                     (implicit bf: BuilderFactory[V, R], pickler: Pickler[P], unpickler: Unpickler[P]): Unit = ???
 
-  def flatMap[V, S <: Traversable[V]](fun: Spore[T, SiloRef[V, S]])
+  def flatMap[V : Pickler : FastTypeTag, S <: Traversable[V]](fun: Spore[T, SiloRef[V, S]])
                                      (implicit pickler: Pickler[Spore[T, SiloRef[V, S]]], unpickler: Unpickler[Spore[T, SiloRef[V, S]]]): SiloRef[V, S] = ???
 
   // def map[V : Pickler, S <: Traversable[V]](fun: Spore[W, V])(implicit pickler: Pickler[Spore[W, V]], unpickler: Unpickler[Spore[W, V]], system: SiloSystem): SiloRef[V, S] = {
