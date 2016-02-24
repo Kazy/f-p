@@ -41,20 +41,6 @@ trait SiloRef[W, T <: Traversable[W]] {
   def flatMap[V, S <: Traversable[V]](fun: Spore[T, SiloRef[V, S]])
                                      (implicit pickler: Pickler[Spore[T, SiloRef[V, S]]], unpickler: Unpickler[Spore[T, SiloRef[V, S]]]): SiloRef[V, S] = ???
 
-  // def map[V : Pickler, S <: Traversable[V]](fun: Spore[W, V])(implicit pickler: Pickler[Spore[W, V]], unpickler: Unpickler[Spore[W, V]], system: SiloSystem): SiloRef[V, S] = {
-  //   this.flatMap(spore {
-  //     val localSpore = fun
-  //     (elems: T) => {
-  //       val res = elems.map(localSpore)
-  //       val silo = system.emptySilo[V, S](host)
-  //       this.pumpTo(silo)(spore {
-  //         val localRes = res
-  //         (elem: V, emit: Emitter[V]) => emit.emit(elem)
-  //       })
-  //     }
-  //   })
-  // }
-
   def id: SiloRefId
 
   def host: Host
