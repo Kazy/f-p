@@ -574,6 +574,23 @@ object Picklers {
           b.hintTag(FastTypeTag.String)
           scala.pickling.pickler.AllPicklers.stringPickler.pickle(picklee.unpickler.getClass.getName, b)
         })
+
+        builder.putField("elemPickler", { b =>
+          b.hintTag(FastTypeTag.String)
+          scala.pickling.pickler.AllPicklers.stringPickler.pickle(picklee.unpickler.getClass.getName, b)
+        })
+
+        builder.putField("elemUnpickler", { b =>
+          b.hintTag(FastTypeTag.String)
+          scala.pickling.pickler.AllPicklers.stringPickler.pickle(picklee.unpickler.getClass.getName, b)
+        })
+        builder.putField("bf", { b =>
+          val clazz = picklee.bf.getClass
+          val tag = FastTypeTag.mkRaw(clazz, runtime.currentMirror).asInstanceOf[FastTypeTag[Any]]
+          val pickler = scala.pickling.runtime.RuntimePicklerLookup.genPickler(clazz.getClassLoader, clazz, tag).asInstanceOf[Pickler[Any]]
+          b.hintTag(tag)
+          pickler.pickle(picklee.bf, b)
+        })
       })
     }
 
@@ -621,7 +638,27 @@ object Picklers {
       reader5.endEntry()
       val unpickler = Unsafe.instance.allocateInstance(Class.forName(unpicklerClassName)).asInstanceOf[Unpickler[Spore[T, SiloRef[V, S]]]]
 
-      FMapped[U, T, V, S](input.asInstanceOf[Node], refId.asInstanceOf[Int], fun.asInstanceOf[T => SiloRef[V, S]], pickler, unpickler)
+      val reader6 = reader.readField("elemPickler")
+      reader6.hintTag(FastTypeTag.String)
+      val tag6 = reader6.beginEntry()
+      val elemPicklerClassName = scala.pickling.pickler.AllPicklers.stringPickler.unpickle(tag6, reader6).asInstanceOf[String]
+      reader6.endEntry()
+      val elemPickler = Unsafe.instance.allocateInstance(Class.forName(elemPicklerClassName)).asInstanceOf[Pickler[V]]
+
+      val reader7 = reader.readField("elemUnpickler")
+      reader7.hintTag(FastTypeTag.String)
+      val tag7 = reader6.beginEntry()
+      val elemUnpicklerClassName = scala.pickling.pickler.AllPicklers.stringPickler.unpickle(tag7, reader6).asInstanceOf[String]
+      reader7.endEntry()
+      val elemUnpickler = Unsafe.instance.allocateInstance(Class.forName(elemPicklerClassName)).asInstanceOf[Unpickler[V]]
+
+      val reader8 = reader.readField("bf")
+      val tag8 = reader8.beginEntry()
+      val unpickler8 = scala.pickling.runtime.RuntimeUnpicklerLookup.genUnpickler(runtime.currentMirror, tag8)
+      reader8.endEntry()
+      val bf = unpickler8.unpickle(tag8, reader8).asInstanceOf[BuilderFactory[V, S]]
+
+      FMapped[U, T, V, S](input.asInstanceOf[Node], refId.asInstanceOf[Int], fun.asInstanceOf[T => SiloRef[V, S]], pickler, unpickler, elemPickler, elemUnpickler, bf)
     }
   }
 

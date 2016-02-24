@@ -187,14 +187,17 @@ class NodeActor(system: SiloSystemInternal) extends Actor {
           val localSender = sender
           (self ? Graph(fm.input)).map { case ForceResponse(value) =>
             val resSilo = fun(value.asInstanceOf[t])
+            system.send(localHost, Graph(fm)).map(_.asInstanceOf[T])
             val actorHost = Config.m(resSilo.host)
             val emptySiloRef = new EmptySiloRef[v, s](localRefId, localHost)(system)
 
+            implicit val bf = fm.bf
+
             resSilo.pumpTo(emptySiloRef)(spore {
+              implicit val localPick = fm.elemPickler
+              implicit val localUnpick = fm.elemUnpickler
               (elem: v, emitter: Emitter[v]) => emitter.emit(elem)
             })
-
-            localSender ! ForceResponse(resSilo)
           }
 
         case m: Materialized =>
