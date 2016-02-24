@@ -147,6 +147,7 @@ class NodeActor(system: SiloSystemInternal) extends Actor {
 
     case msg @ ForceMessage(idVal) =>
       println(s"SERVER: forcing SiloRef '$idVal'...")
+      println(s"force message promises: ${promiseOf}")
 
       // check if promise exists, if not insert empty promise
       // (right now, this is atomic due to atomic turn property of actors)
@@ -181,23 +182,16 @@ class NodeActor(system: SiloSystemInternal) extends Actor {
 
         case fm: FMapped[u, t, v, s] =>
           val fun = fm.fun
-          val localRefId = fm.refId
-          val localHost = system.location(localRefId)
-          val promise = getOrElseInitPromise(localRefId)
+          val promise = getOrElseInitPromise(fm.refId)
           val localSender = sender
           (self ? Graph(fm.input)).map { case ForceResponse(value) =>
             val resSilo = fun(value.asInstanceOf[t])
-            system.send(localHost, Graph(fm)).map(_.asInstanceOf[T])
-            val actorHost = Config.m(resSilo.host)
-            val emptySiloRef = new EmptySiloRef[v, s](localRefId, localHost)(system)
-
-            implicit val bf = fm.bf
-
-            resSilo.pumpTo(emptySiloRef)(spore {
-              implicit val localPick = fm.elemPickler
-              implicit val localUnpick = fm.elemUnpickler
-              (elem: v, emitter: Emitter[v]) => emitter.emit(elem)
-            })
+            val res = resSilo.send()
+            res.map { case data =>
+              val newSilo = new LocalSilo[v, s](data)
+              promise.success(newSilo)
+              localSender ! ForceResponse(data)
+            }
           }
 
         case m: Materialized =>
